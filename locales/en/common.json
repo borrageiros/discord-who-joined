@@ -1,0 +1,7 @@
+{
+  "app.started": "Bot is online.",
+  "errors.missing_permissions": "You do not have permission to use this command.",
+  "errors.unexpected": "Unexpected error. Please try again later.",
+  "invite.title": "Invite Link",
+  "invite.description": "Use this link to add the bot to another server."
+}

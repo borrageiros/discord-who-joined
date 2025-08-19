@@ -1,0 +1,4 @@
+docker build -t borrageiros/discord-who-joined:latest . && docker push borrageiros/discord-who-joined:latest
+
+docker build --platform=linux/arm64 -t borrageiros/discord-who-joined:latest . && docker push borrageiros/discord-who-joined:latest
+

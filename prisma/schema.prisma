@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../data/data.db"
+}
+
+model GuildConfig {
+  id                     String   @id @default(cuid())
+  guildId                String   @unique
+  defaultLocale          String?
+  defaultTimezone        String?
+  defaultMessageTemplate String?
+  allowedRoles           AllowedRole[]
+  allowedUsers           AllowedUser[]
+  watchers               WatcherConfig[]
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model WatcherConfig {
+  id                          String   @id @default(cuid())
+  guild                       GuildConfig @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  guildId                     String
+  userId                      String
+  enabled                     Boolean  @default(true)
+  notifySelfJoin              Boolean  @default(false)
+  notifyWhileWatcherInVoice   Boolean  @default(true)
+  notifyOnMove                Boolean  @default(false)
+  channelFilterMode           ChannelFilterMode @default(NONE)
+  channelFilters              ChannelFilter[]
+  messageTemplate             String?
+  locale                      String?
+  timezone                    String?
+  cooldownSeconds             Int       @default(60)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  @@index([guildId, userId])
+  @@unique([guildId, userId], name: "guildId_userId")
+}
+
+enum ChannelFilterMode {
+  NONE
+  INCLUDE
+  EXCLUDE
+}
+
+model AllowedRole {
+  id       String       @id @default(cuid())
+  guild    GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  guildId  String
+  roleId   String
+  isAdmin  Boolean      @default(false)
+
+  @@unique([guildId, roleId], name: "guildId_roleId")
+}
+
+model AllowedUser {
+  id       String       @id @default(cuid())
+  guild    GuildConfig  @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+  guildId  String
+  userId   String
+  isAdmin  Boolean      @default(false)
+
+  @@unique([guildId, userId], name: "guildId_userId_allowed")
+}
+
+model ChannelFilter {
+  id         String         @id @default(cuid())
+  watcher    WatcherConfig  @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId  String
+  channelId  String
+
+  @@unique([watcherId, channelId], name: "watcherId_channelId")
+}

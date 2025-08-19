@@ -1,0 +1,19 @@
+{
+  "watch": [
+    "src",
+    "src/*",
+    "locales"
+  ],
+  "ext": "ts json js env",
+  "ignore": [
+    "dist",
+    "node_modules",
+    "data",
+    ".git"
+  ],
+  "exec": "ts-node src/index.ts",
+  "legacyWatch": true,
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
