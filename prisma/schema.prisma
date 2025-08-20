@@ -30,14 +30,16 @@ model WatcherConfig {
   userId                      String
   enabled                     Boolean  @default(true)
   notifySelfJoin              Boolean  @default(false)
-  notifyWhileWatcherInVoice   Boolean  @default(true)
+  notifyWhileWatcherInVoice   Boolean  @default(false)
   notifyOnMove                Boolean  @default(false)
+  notifyOnBotJoin             Boolean  @default(false)
   channelFilterMode           ChannelFilterMode @default(NONE)
   channelFilters              ChannelFilter[]
+  excludedUsers               ExcludedUser[]
+  excludedRoles               ExcludedRole[]
   messageTemplate             String?
   locale                      String?
   timezone                    String?
-  cooldownSeconds             Int       @default(60)
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
 
@@ -78,4 +80,22 @@ model ChannelFilter {
   channelId  String
 
   @@unique([watcherId, channelId], name: "watcherId_channelId")
+}
+
+model ExcludedUser {
+  id        String        @id @default(cuid())
+  watcher   WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId String
+  userId    String
+
+  @@unique([watcherId, userId], name: "watcherId_userId_excluded")
+}
+
+model ExcludedRole {
+  id        String        @id @default(cuid())
+  watcher   WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId String
+  roleId    String
+
+  @@unique([watcherId, roleId], name: "watcherId_roleId_excluded")
 }

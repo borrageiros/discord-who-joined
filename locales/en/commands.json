@@ -1,9 +1,12 @@
 {
-  "invite.success": "Here is your invite link:",
-  "invite.title": "Add the bot to your server",
+  "app.title": "Discord Who Joined",
+  "invite.success": "INVITE",
   "invite.description": "Click the button below to invite the bot to your server.",
   "config.saved": "Configuration saved.",
   "watcher.updated": "Watcher updated.",
+  "watcher.added": "Watcher added.",
+  "watcher.not_found": "Watcher not found.",
+  "watcher.already_exists": "Watcher already exists.",
   "watcher.removed": "Watcher removed.",
   "permissions.role.allowed": "Role allowed.",
   "permissions.role.removed": "Role removed.",
@@ -25,7 +28,12 @@
   "config.view.labels.self_join": "Self join",
   "config.view.labels.while_in_voice": "While in voice",
   "config.view.labels.on_move": "On move",
-  "config.view.labels.cooldown": "Cooldown",
+  "config.view.labels.on_bot_join": "On bot join",
+  "config.view.labels.excluded_users": "Excluded users",
+  "config.view.labels.excluded_roles": "Excluded roles",
   "config.view.labels.locale": "Locale",
-  "config.view.labels.timezone": "Timezone"
+  "config.view.labels.timezone": "Timezone",
+  "config.view.labels.inherit": "Inheritance from the server",
+  "config.view.labels.message_template": "Message Template",
+  "config.view.values.message_default": "Using default template"
 }

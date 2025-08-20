@@ -19,8 +19,8 @@ export async function registerGlobalCommands(): Promise<void> {
       options: [
         {
           type: 1,
-          name: "set-default",
-          description: "Set default server configuration",
+          name: "server-config",
+          description: "Set server configuration",
           options: [
             {
               type: 3,
@@ -29,7 +29,7 @@ export async function registerGlobalCommands(): Promise<void> {
               required: false,
               choices: [
                 { name: "English", value: "en" },
-                { name: "Español", value: "es" },
+                { name: "Spanish", value: "es" },
               ] as APIApplicationCommandOptionChoice<string>[],
             },
             {
@@ -39,16 +39,16 @@ export async function registerGlobalCommands(): Promise<void> {
               required: false,
               choices: [
                 { name: "UTC", value: "UTC" },
-                { name: "Madrid/España", value: "Europe/Madrid" },
-                { name: "London/Reino Unido", value: "Europe/London" },
-                { name: "New York/USA Este", value: "America/New_York" },
-                { name: "Los Angeles/USA Oeste", value: "America/Los_Angeles" },
-                { name: "México", value: "America/Mexico_City" },
+                { name: "Madrid/Spain", value: "Europe/Madrid" },
+                { name: "London/United Kingdom", value: "Europe/London" },
+                { name: "New York/USA East", value: "America/New_York" },
+                { name: "Los Angeles/USA West", value: "America/Los_Angeles" },
+                { name: "Mexico City/Mexico", value: "America/Mexico_City" },
                 {
                   name: "Buenos Aires/Argentina",
                   value: "America/Argentina/Buenos_Aires",
                 },
-                { name: "São Paulo/Brasil", value: "America/Sao_Paulo" },
+                { name: "São Paulo/Brazil", value: "America/Sao_Paulo" },
               ] as APIApplicationCommandOptionChoice<string>[],
             },
             {
@@ -57,6 +57,86 @@ export async function registerGlobalCommands(): Promise<void> {
               description:
                 "Default message template, available variables: {me}, {user}, {channel}, {server}, {date}",
               required: false,
+            },
+          ],
+        },
+        {
+          type: 1,
+          name: "watcher-config",
+          description: "Configure watcher profile",
+          options: [
+            {
+              type: 6,
+              name: "user",
+              description: "User to configure (admin only; default: yourself)",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "enabled",
+              description: "Enable notifications",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "notify_self_join",
+              description: "Notify on self join",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "notify_while_in_voice",
+              description: "Notify while watcher is in voice",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "notify_on_move",
+              description: "Notify on channel move",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "notify_on_bot_join",
+              description: "Notify when the actor is a bot",
+              required: false,
+            },
+            {
+              type: 3,
+              name: "message",
+              description: "Personal message template",
+              required: false,
+            },
+            {
+              type: 3,
+              name: "locale",
+              description: "Locale",
+              required: false,
+              choices: [
+                { name: "Inheritance from the server", value: "inherit" },
+                { name: "English", value: "en" },
+                { name: "Spanish", value: "es" },
+              ] as APIApplicationCommandOptionChoice<string>[],
+            },
+            {
+              type: 3,
+              name: "timezone",
+              description: "Timezone",
+              required: false,
+              choices: [
+                { name: "Inheritance from the server", value: "inherit" },
+                { name: "UTC", value: "UTC" },
+                { name: "Madrid/Spain", value: "Europe/Madrid" },
+                { name: "London/United Kingdom", value: "Europe/London" },
+                { name: "New York/USA East", value: "America/New_York" },
+                { name: "Los Angeles/USA West", value: "America/Los_Angeles" },
+                { name: "Mexico City/Mexico", value: "America/Mexico_City" },
+                {
+                  name: "Buenos Aires/Argentina",
+                  value: "America/Argentina/Buenos_Aires",
+                },
+                { name: "São Paulo/Brazil", value: "America/Sao_Paulo" },
+              ] as APIApplicationCommandOptionChoice<string>[],
             },
           ],
         },
@@ -117,6 +197,93 @@ export async function registerGlobalCommands(): Promise<void> {
           ],
         },
         {
+          type: 2,
+          name: "exclude",
+          description: "Manage excluded users and roles for a watcher",
+          options: [
+            {
+              type: 1,
+              name: "add-user",
+              description: "Exclude a specific user",
+              options: [
+                {
+                  type: 6,
+                  name: "user",
+                  description: "User to exclude",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-user",
+              description: "Remove an excluded user",
+              options: [
+                {
+                  type: 6,
+                  name: "user",
+                  description: "User to remove",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "add-role",
+              description: "Exclude a role",
+              options: [
+                {
+                  type: 8,
+                  name: "role",
+                  description: "Role to exclude",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-role",
+              description: "Remove an excluded role",
+              options: [
+                {
+                  type: 8,
+                  name: "role",
+                  description: "Role to remove",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+          ],
+        },
+        {
           type: 1,
           name: "add-watcher",
           description: "Add or update a watcher",
@@ -152,9 +319,9 @@ export async function registerGlobalCommands(): Promise<void> {
               required: false,
             },
             {
-              type: 4,
-              name: "cooldown",
-              description: "Cooldown seconds",
+              type: 5,
+              name: "notify_on_bot_join",
+              description: "Notify when the actor is a bot",
               required: false,
             },
             {
@@ -166,8 +333,13 @@ export async function registerGlobalCommands(): Promise<void> {
             {
               type: 3,
               name: "locale",
-              description: "Locale (en, es)",
+              description: "Locale",
               required: false,
+              choices: [
+                { name: "Inheritance from the server", value: "inherit" },
+                { name: "English", value: "en" },
+                { name: "Spanish", value: "es" },
+              ] as APIApplicationCommandOptionChoice<string>[],
             },
             {
               type: 3,
@@ -175,17 +347,18 @@ export async function registerGlobalCommands(): Promise<void> {
               description: "Timezone",
               required: false,
               choices: [
+                { name: "Inheritance from the server", value: "inherit" },
                 { name: "UTC", value: "UTC" },
-                { name: "Madrid/España", value: "Europe/Madrid" },
-                { name: "London/Reino Unido", value: "Europe/London" },
-                { name: "New York/USA Este", value: "America/New_York" },
-                { name: "Los Angeles/USA Oeste", value: "America/Los_Angeles" },
-                { name: "México", value: "America/Mexico_City" },
+                { name: "Madrid/Spain", value: "Europe/Madrid" },
+                { name: "London/United Kingdom", value: "Europe/London" },
+                { name: "New York/USA East", value: "America/New_York" },
+                { name: "Los Angeles/USA West", value: "America/Los_Angeles" },
+                { name: "Mexico City/Mexico", value: "America/Mexico_City" },
                 {
                   name: "Buenos Aires/Argentina",
                   value: "America/Argentina/Buenos_Aires",
                 },
-                { name: "São Paulo/Brasil", value: "America/Sao_Paulo" },
+                { name: "São Paulo/Brazil", value: "America/Sao_Paulo" },
               ] as APIApplicationCommandOptionChoice<string>[],
             },
           ],

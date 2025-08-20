@@ -1,5 +1,5 @@
 {
   "voice.title": "📢 ¡Nueva conexión de voz!",
-  "voice.default": "Hola {me},\n{user} está ahora conectado a {channel}\nen el servidor {server}",
+  "voice.default": "Hola {me},\n{user} está ahora conectado",
   "voice.join": "Unirse al canal de voz"
 }

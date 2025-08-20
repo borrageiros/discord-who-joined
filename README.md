@@ -82,10 +82,11 @@ yarn dev
 
 - `/invite` — shows an embed with a button to invite the bot
 - `/config view` — shows your personal config; if you are bot admin, also shows the server config
-- `/config set-default` — set server config (bot admins)
-- `/config add-watcher` — add/update a watcher; normal users can only manage themselves
-- `/config remove-watcher` — remove a watcher; normal users can only remove themselves
-- `/config permissions *` — manage who can use the bot and who is bot admin (bot admins)
+- `/config server-config` — set server configuration (admins only)
+- `/config add-watcher` — add a watcher; admins can add anyone, allowed users can add themselves
+- `/config watcher-config` — configure watcher profile; admins can edit anyone, allowed users can edit themselves
+- `/config remove-watcher` — remove a watcher; admins can remove anyone, allowed users can remove themselves
+- `/config permissions *` — manage who can use the bot and who is bot admin (admins only)
 
 ## 🔐 Permissions Model
 

@@ -10,9 +10,28 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { env } from "../config/env";
+import i18next from "i18next";
 import { t } from "../i18n";
 import { normalizeEscapes } from "../utils/text";
 import { prisma } from "../db/client";
+
+type AllowedRoleLite = { roleId: string; isAdmin: boolean };
+type AllowedUserLite = { userId: string; isAdmin: boolean };
+
+async function resolveLocale(
+  guildId: string | null,
+  userId: string | null
+): Promise<string> {
+  const fallback = env.DEFAULT_LOCALE;
+  if (!guildId || !userId) return fallback;
+  const [gc, watcher] = await Promise.all([
+    prisma.guildConfig.findUnique({ where: { guildId } }),
+    prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId } },
+    }),
+  ]);
+  return watcher?.locale ?? gc?.defaultLocale ?? fallback;
+}
 
 export function createClient(): Client {
   const client = new Client({
@@ -34,10 +53,18 @@ export function createClient(): Client {
     try {
       if (name === "invite") {
         const url = `https://discord.com/api/oauth2/authorize?client_id=${env.CLIENT_ID}&permissions=3072&scope=bot%20applications.commands`;
+        const locale = await resolveLocale(
+          interaction.inCachedGuild() ? interaction.guildId! : null,
+          interaction.user.id
+        );
+        i18next.changeLanguage(locale);
         const embed = new EmbedBuilder()
-          .setTitle(t("commands:invite.title"))
+          .setTitle(t("commands:app.title"))
           .setDescription(t("commands:invite.description"))
-          .setColor(0x7289da);
+          .setColor(0x7289da)
+          .setThumbnail(
+            "https://raw.githubusercontent.com/borrageiros/discord-who-joined/refs/heads/main/images/icon.png"
+          );
         await interaction.reply({
           embeds: [embed],
           components: [
@@ -58,6 +85,11 @@ export function createClient(): Client {
         return;
       }
       if (name === "config") {
+        const locale = await resolveLocale(
+          interaction.inCachedGuild() ? interaction.guildId! : null,
+          interaction.user.id
+        );
+        i18next.changeLanguage(locale);
         await handleConfigCommand(interaction);
         return;
       }
@@ -149,7 +181,7 @@ async function handleConfigCommand(interaction: any): Promise<void> {
   const group = interaction.options.getSubcommandGroup(false);
   const sub = interaction.options.getSubcommand(false);
   const isAdminOp =
-    ["set-default"].includes(sub ?? "") || group === "permissions";
+    ["server-config"].includes(sub ?? "") || group === "permissions";
   const hasPerm = isAdminOp
     ? await userHasAdminPermission(interaction)
     : await userHasConfigPermission(interaction);
@@ -173,7 +205,7 @@ async function handleConfigCommand(interaction: any): Promise<void> {
     update: {},
   });
 
-  if (!group && sub === "set-default") {
+  if (!group && sub === "server-config") {
     const defaultLocale = interaction.options.getString("locale") ?? undefined;
     const defaultTimezone =
       interaction.options.getString("timezone") ?? undefined;
@@ -190,17 +222,29 @@ async function handleConfigCommand(interaction: any): Promise<void> {
     return;
   }
 
-  if (!group && sub === "add-watcher") {
-    const isAdminOp = await userHasAdminPermission(interaction);
+  if (!group && sub === "watcher-config") {
+    const isAdminUser = await userHasAdminPermission(interaction);
     const targetUser = interaction.options.getUser("user") ?? interaction.user;
-    if (!isAdminOp && targetUser.id !== interaction.user.id) {
+    if (!isAdminUser && targetUser.id !== interaction.user.id) {
       await interaction.reply({
         content: t("errors.missing_permissions"),
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
+
     const user = targetUser;
+    const existing = await prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId: user.id } },
+    });
+    if (!existing) {
+      await interaction.reply({
+        content: t("commands:watcher.not_found"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     const enabled = interaction.options.getBoolean("enabled") ?? undefined;
     const notifySelfJoin =
       interaction.options.getBoolean("notify_self_join") ?? undefined;
@@ -208,40 +252,98 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       interaction.options.getBoolean("notify_while_in_voice") ?? undefined;
     const notifyOnMove =
       interaction.options.getBoolean("notify_on_move") ?? undefined;
-    const cooldownSeconds =
-      interaction.options.getInteger("cooldown") ?? undefined;
+    const notifyOnBotJoin =
+      interaction.options.getBoolean("notify_on_bot_join") ?? undefined;
     const messageTemplate =
       interaction.options.getString("message") ?? undefined;
-    const locale = interaction.options.getString("locale") ?? undefined;
-    const timezone = interaction.options.getString("timezone") ?? undefined;
+    const localeOpt = interaction.options.getString("locale");
+    const localeUpdate =
+      localeOpt == null
+        ? undefined
+        : localeOpt === "inherit"
+        ? null
+        : localeOpt;
+    const timezoneOpt = interaction.options.getString("timezone");
+    const timezoneUpdate =
+      timezoneOpt == null
+        ? undefined
+        : timezoneOpt === "inherit"
+        ? null
+        : timezoneOpt;
 
-    await prisma.watcherConfig.upsert({
+    await prisma.watcherConfig.update({
       where: { guildId_userId: { guildId, userId: user.id } },
-      update: {
+      data: {
         enabled: enabled ?? undefined,
         notifySelfJoin: notifySelfJoin ?? undefined,
         notifyWhileWatcherInVoice: notifyWhileWatcherInVoice ?? undefined,
         notifyOnMove: notifyOnMove ?? undefined,
-        cooldownSeconds: cooldownSeconds ?? undefined,
+        notifyOnBotJoin: notifyOnBotJoin ?? undefined,
         messageTemplate: messageTemplate ?? undefined,
-        locale: locale ?? undefined,
-        timezone: timezone ?? undefined,
-      },
-      create: {
-        guildId,
-        userId: user.id,
-        enabled: enabled ?? true,
-        notifySelfJoin: notifySelfJoin ?? false,
-        notifyWhileWatcherInVoice: notifyWhileWatcherInVoice ?? true,
-        notifyOnMove: notifyOnMove ?? false,
-        cooldownSeconds: cooldownSeconds ?? 60,
-        messageTemplate: messageTemplate ?? null,
-        locale: locale ?? null,
-        timezone: timezone ?? null,
+        locale: localeUpdate,
+        timezone: timezoneUpdate,
       },
     });
     await interaction.reply({
       content: t("commands:watcher.updated"),
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  if (!group && sub === "add-watcher") {
+    const isAdminUser = await userHasAdminPermission(interaction);
+    const targetUser = interaction.options.getUser("user") ?? interaction.user;
+    if (!isAdminUser && targetUser.id !== interaction.user.id) {
+      await interaction.reply({
+        content: t("errors.missing_permissions"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const user = targetUser;
+    const existing = await prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId: user.id } },
+    });
+    if (existing) {
+      await interaction.reply({
+        content: t("commands:watcher.already_exists"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const enabled = interaction.options.getBoolean("enabled") ?? undefined;
+    const notifySelfJoin =
+      interaction.options.getBoolean("notify_self_join") ?? undefined;
+    const notifyWhileWatcherInVoice =
+      interaction.options.getBoolean("notify_while_in_voice") ?? undefined;
+    const notifyOnMove =
+      interaction.options.getBoolean("notify_on_move") ?? undefined;
+    const notifyOnBotJoin =
+      interaction.options.getBoolean("notify_on_bot_join") ?? undefined;
+    const messageTemplate =
+      interaction.options.getString("message") ?? undefined;
+    const localeOpt = interaction.options.getString("locale");
+    const localeVal = localeOpt === "inherit" ? null : localeOpt ?? null;
+    const timezoneOpt = interaction.options.getString("timezone");
+    const timezoneVal = timezoneOpt === "inherit" ? null : timezoneOpt ?? null;
+
+    await prisma.watcherConfig.create({
+      data: {
+        guildId,
+        userId: user.id,
+        enabled: enabled ?? true,
+        notifySelfJoin: notifySelfJoin ?? false,
+        notifyWhileWatcherInVoice: notifyWhileWatcherInVoice ?? false,
+        notifyOnMove: notifyOnMove ?? false,
+        notifyOnBotJoin: notifyOnBotJoin ?? false,
+        messageTemplate: messageTemplate ?? null,
+        locale: localeVal,
+        timezone: timezoneVal,
+      },
+    });
+    await interaction.reply({
+      content: t("commands:watcher.added"),
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -327,23 +429,23 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       const none = t("commands:permissions.list.none");
       const adminRoles =
         gc?.allowedRoles
-          ?.filter((r) => r.isAdmin)
-          .map((r) => `<@&${r.roleId}>`)
+          ?.filter((r: AllowedRoleLite) => r.isAdmin)
+          .map((r: AllowedRoleLite) => `<@&${r.roleId}>`)
           .join(", ") || none;
       const userRoles =
         gc?.allowedRoles
-          ?.filter((r) => !r.isAdmin)
-          .map((r) => `<@&${r.roleId}>`)
+          ?.filter((r: AllowedRoleLite) => !r.isAdmin)
+          .map((r: AllowedRoleLite) => `<@&${r.roleId}>`)
           .join(", ") || none;
       const adminUsers =
         gc?.allowedUsers
-          ?.filter((u) => u.isAdmin)
-          .map((u) => `<@${u.userId}>`)
+          ?.filter((u: AllowedUserLite) => u.isAdmin)
+          .map((u: AllowedUserLite) => `<@${u.userId}>`)
           .join(", ") || none;
       const userUsers =
         gc?.allowedUsers
-          ?.filter((u) => !u.isAdmin)
-          .map((u) => `<@${u.userId}>`)
+          ?.filter((u: AllowedUserLite) => !u.isAdmin)
+          .map((u: AllowedUserLite) => `<@${u.userId}>`)
           .join(", ") || none;
 
       const embed = new EmbedBuilder()
@@ -379,14 +481,95 @@ async function handleConfigCommand(interaction: any): Promise<void> {
     }
   }
 
+  if (group === "exclude") {
+    const isAdminUser = await userHasAdminPermission(interaction);
+    const targetUser =
+      interaction.options.getUser("watcher") ?? interaction.user;
+    if (!isAdminUser && targetUser.id !== interaction.user.id) {
+      await interaction.reply({
+        content: t("errors.missing_permissions"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const user = targetUser;
+    const watcher = await prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId: user.id } },
+    });
+    if (!watcher) {
+      await interaction.reply({
+        content: t("commands:watcher.not_found"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (sub === "add-user") {
+      const u = interaction.options.getUser("user", true);
+      await prisma.excludedUser.upsert({
+        where: {
+          watcherId_userId_excluded: { watcherId: watcher.id, userId: u.id },
+        },
+        update: {},
+        create: { watcherId: watcher.id, userId: u.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-user") {
+      const u = interaction.options.getUser("user", true);
+      await prisma.excludedUser.deleteMany({
+        where: { watcherId: watcher.id, userId: u.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "add-role") {
+      const r = interaction.options.getRole("role", true);
+      await prisma.excludedRole.upsert({
+        where: {
+          watcherId_roleId_excluded: { watcherId: watcher.id, roleId: r.id },
+        },
+        update: {},
+        create: { watcherId: watcher.id, roleId: r.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-role") {
+      const r = interaction.options.getRole("role", true);
+      await prisma.excludedRole.deleteMany({
+        where: { watcherId: watcher.id, roleId: r.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+  }
+
   if (!group && sub === "view") {
     const gc = await prisma.guildConfig.findUnique({
       where: { guildId },
-      include: { watchers: true },
+      include: {
+        watchers: { include: { excludedUsers: true, excludedRoles: true } },
+      },
     });
     const isAdminOp = await userHasAdminPermission(interaction);
     const me = interaction.user;
-    const myWatcher = gc?.watchers.find((w) => w.userId === me.id);
+    const myWatcher = gc?.watchers.find(
+      (w: { userId: string }) => w.userId === me.id
+    );
 
     const embed = new EmbedBuilder()
       .setTitle(t("commands:config.view.title"))
@@ -402,14 +585,25 @@ async function handleConfigCommand(interaction: any): Promise<void> {
           "commands:config.view.labels.locale"
         )}:** ${resolvedLocale}\n**${t(
           "commands:config.view.labels.timezone"
-        )}:** ${resolvedTimezone}\n**Message Template:** ${
-          gc.defaultMessageTemplate || "Using default template"
+        )}:** ${resolvedTimezone}\n**${t(
+          "commands:config.view.labels.message_template"
+        )}:** ${
+          gc.defaultMessageTemplate ||
+          t("commands:config.view.values.message_default")
         }`,
         inline: false,
       });
     }
 
     if (myWatcher) {
+      const excludedUsersList =
+        (myWatcher as any).excludedUsers
+          ?.map((eu: any) => `<@${eu.userId}>`)
+          .join(", ") || t("commands:permissions.list.none");
+      const excludedRolesList =
+        (myWatcher as any).excludedRoles
+          ?.map((er: any) => `<@&${er.roleId}>`)
+          .join(", ") || t("commands:permissions.list.none");
       embed.addFields({
         name: t("commands:config.view.user"),
         value: `**${t("commands:config.view.labels.enabled")}:** ${
@@ -420,13 +614,17 @@ async function handleConfigCommand(interaction: any): Promise<void> {
           myWatcher.notifyWhileWatcherInVoice ? "✅" : "❌"
         }\n**${t("commands:config.view.labels.on_move")}:** ${
           myWatcher.notifyOnMove ? "✅" : "❌"
-        }\n**${t("commands:config.view.labels.cooldown")}:** ${
-          myWatcher.cooldownSeconds
-        }s\n**${t("commands:config.view.labels.locale")}:** ${
-          myWatcher.locale || "inherit"
+        }\n**${t("commands:config.view.labels.on_bot_join")}:** ${
+          (myWatcher as any).notifyOnBotJoin ? "✅" : "❌"
+        }\n**${t("commands:config.view.labels.locale")}:** ${
+          myWatcher.locale || t("commands:config.view.labels.inherit")
         }\n**${t("commands:config.view.labels.timezone")}:** ${
-          myWatcher.timezone || "inherit"
-        }`,
+          myWatcher.timezone || t("commands:config.view.labels.inherit")
+        }\n**${t(
+          "commands:config.view.labels.excluded_users"
+        )}:** ${excludedUsersList}\n**${t(
+          "commands:config.view.labels.excluded_roles"
+        )}:** ${excludedRolesList}`,
         inline: false,
       });
     } else {
@@ -462,7 +660,9 @@ async function handleVoiceStateUpdate(
 
   const config = await prisma.guildConfig.findUnique({
     where: { guildId },
-    include: { watchers: true },
+    include: {
+      watchers: { include: { excludedUsers: true, excludedRoles: true } },
+    },
   });
   if (!config) return;
 
@@ -474,6 +674,7 @@ async function handleVoiceStateUpdate(
     if (!watcher.enabled) continue;
     if (actorId === watcher.userId && !watcher.notifySelfJoin) continue;
     if (moved && !watcher.notifyOnMove) continue;
+    if (newState.member?.user.bot && !watcher.notifyOnBotJoin) continue;
 
     const member = await newState.guild.members
       .fetch(watcher.userId)
@@ -482,7 +683,22 @@ async function handleVoiceStateUpdate(
     const inVoice = member.voice.channelId != null;
     if (inVoice && !watcher.notifyWhileWatcherInVoice) continue;
 
+    const actorUserId = newState.member?.id;
+    const actorRoles = newState.member?.roles?.cache
+      ? new Set(newState.member.roles.cache.keys())
+      : new Set<string>();
+    if (
+      actorUserId &&
+      (watcher.excludedUsers ?? []).some((eu: any) => eu.userId === actorUserId)
+    )
+      continue;
+    if (
+      (watcher.excludedRoles ?? []).some((er: any) => actorRoles.has(er.roleId))
+    )
+      continue;
+
     const locale = watcher.locale ?? config.defaultLocale ?? env.DEFAULT_LOCALE;
+    i18next.changeLanguage(locale);
     const templateRaw =
       watcher.messageTemplate ??
       config.defaultMessageTemplate ??
@@ -518,6 +734,19 @@ async function handleVoiceStateUpdate(
       .setDescription(content)
       .setColor(0x7289da)
       .setTimestamp();
+
+    const serverIcon = newState.guild.iconURL({ size: 256 }) ?? undefined;
+    if (serverIcon) {
+      notificationEmbed.setAuthor({
+        name: serverName,
+        iconURL: serverIcon,
+      });
+    }
+    const actorAvatar =
+      newState.member?.displayAvatarURL({ size: 128 }) ?? undefined;
+    if (actorAvatar) {
+      notificationEmbed.setThumbnail(actorAvatar);
+    }
 
     if (voiceUrl) {
       notificationEmbed.addFields({

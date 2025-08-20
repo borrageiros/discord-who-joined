@@ -1,9 +1,12 @@
 {
-  "invite.success": "Aquí tienes tu enlace de invitación:",
-  "invite.title": "Añade el bot a tu servidor",
+  "app.title": "Discord Who Joined",
+  "invite.success": "INVITAR",
   "invite.description": "Haz clic en el botón para invitar al bot a tu servidor.",
   "config.saved": "Configuración guardada.",
   "watcher.updated": "Watcher actualizado.",
+  "watcher.added": "Watcher añadido.",
+  "watcher.not_found": "Watcher no encontrado.",
+  "watcher.already_exists": "El watcher ya existe.",
   "watcher.removed": "Watcher eliminado.",
   "permissions.role.allowed": "Rol permitido.",
   "permissions.role.removed": "Rol eliminado.",
@@ -25,7 +28,12 @@
   "config.view.labels.self_join": "Auto-entrada",
   "config.view.labels.while_in_voice": "Mientras en voz",
   "config.view.labels.on_move": "Al moverse",
-  "config.view.labels.cooldown": "Cooldown",
+  "config.view.labels.on_bot_join": "Si el que se conecta es un bot",
+  "config.view.labels.excluded_users": "Usuarios excluidos",
+  "config.view.labels.excluded_roles": "Roles excluidos",
   "config.view.labels.locale": "Idioma",
-  "config.view.labels.timezone": "Zona horaria"
+  "config.view.labels.timezone": "Zona horaria",
+  "config.view.labels.inherit": "En herencia del servidor",
+  "config.view.labels.message_template": "Plantilla de mensaje",
+  "config.view.values.message_default": "Usando la plantilla por defecto"
 }
