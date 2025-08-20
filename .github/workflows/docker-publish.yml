@@ -32,8 +32,8 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: borrageiros/discord-who-joined:latest
-          cache-from: type=registry,ref=borrageiros/discord-who-joined:buildcache-amd64
-          cache-to: type=registry,ref=borrageiros/discord-who-joined:buildcache-amd64,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push (arm64)
         uses: docker/build-push-action@v6
@@ -42,5 +42,5 @@ jobs:
           push: true
           platforms: linux/arm64
           tags: borrageiros/discord-who-joined:arm64
-          cache-from: type=registry,ref=borrageiros/discord-who-joined:buildcache-arm64
-          cache-to: type=registry,ref=borrageiros/discord-who-joined:buildcache-arm64,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
