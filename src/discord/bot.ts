@@ -8,6 +8,9 @@ import {
   InteractionReplyOptions,
   MessageFlags,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from "discord.js";
 import { env } from "../config/env";
 import i18next from "i18next";
@@ -48,58 +51,124 @@ export function createClient(): Client {
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    const name = interaction.commandName;
     try {
-      if (name === "invite") {
-        const url = `https://discord.com/api/oauth2/authorize?client_id=${env.CLIENT_ID}&permissions=3072&scope=bot%20applications.commands`;
-        const locale = await resolveLocale(
-          interaction.inCachedGuild() ? interaction.guildId! : null,
-          interaction.user.id
-        );
-        i18next.changeLanguage(locale);
-        const embed = new EmbedBuilder()
-          .setTitle(t("commands:app.title"))
-          .setDescription(t("commands:invite.description"))
-          .setColor(0x7289da)
-          .setThumbnail(
-            "https://raw.githubusercontent.com/borrageiros/discord-who-joined/refs/heads/main/images/icon.png"
+      if (interaction.isChatInputCommand()) {
+        const name = interaction.commandName;
+        if (name === "invite") {
+          const url = `https://discord.com/api/oauth2/authorize?client_id=${env.CLIENT_ID}&permissions=3072&scope=bot%20applications.commands`;
+          const locale = await resolveLocale(
+            interaction.inCachedGuild() ? interaction.guildId! : null,
+            interaction.user.id
           );
-        await interaction.reply({
-          embeds: [embed],
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 5,
-                  label: t("commands:invite.success"),
-                  url,
-                },
-              ],
-            },
-          ],
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
+          i18next.changeLanguage(locale);
+          const embed = new EmbedBuilder()
+            .setTitle(t("commands:app.title"))
+            .setDescription(t("commands:invite.description"))
+            .setColor(0x7289da)
+            .setThumbnail(
+              "https://raw.githubusercontent.com/borrageiros/discord-who-joined/refs/heads/main/images/icon.png"
+            );
+          await interaction.reply({
+            embeds: [embed],
+            components: [
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 2,
+                    style: 5,
+                    label: t("commands:invite.success"),
+                    url,
+                  },
+                ],
+              },
+            ],
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+        if (name === "config") {
+          const locale = await resolveLocale(
+            interaction.inCachedGuild() ? interaction.guildId! : null,
+            interaction.user.id
+          );
+          i18next.changeLanguage(locale);
+          await handleConfigCommand(interaction);
+          return;
+        }
       }
-      if (name === "config") {
+      if (interaction.isButton()) {
+        if (!interaction.inCachedGuild()) {
+          if (interaction.isRepliable()) {
+            await interaction.reply({
+              content: t("errors.unexpected"),
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+          return;
+        }
         const locale = await resolveLocale(
-          interaction.inCachedGuild() ? interaction.guildId! : null,
+          interaction.guildId!,
           interaction.user.id
         );
         i18next.changeLanguage(locale);
-        await handleConfigCommand(interaction);
-        return;
+        const customId = interaction.customId;
+        if (customId === "config_create_watcher_self") {
+          const hasPerm = await userHasConfigPermission(interaction as any);
+          if (!hasPerm) {
+            if (interaction.isRepliable()) {
+              await interaction.reply({
+                content: t("errors.missing_permissions"),
+                flags: MessageFlags.Ephemeral,
+              });
+            }
+            return;
+          }
+          const guildId = interaction.guildId!;
+          const existing = await prisma.watcherConfig.findUnique({
+            where: { guildId_userId: { guildId, userId: interaction.user.id } },
+          });
+          if (existing) {
+            if (interaction.isRepliable()) {
+              await interaction.reply({
+                content: t("commands:watcher.already_exists"),
+                flags: MessageFlags.Ephemeral,
+              });
+            }
+            return;
+          }
+          await prisma.watcherConfig.create({
+            data: {
+              guildId,
+              userId: interaction.user.id,
+              enabled: true,
+              notifySelfJoin: false,
+              notifyWhileWatcherInVoice: false,
+              notifyOnMove: false,
+              notifyOnBotJoin: false,
+              messageTemplate: null,
+              locale: null,
+              timezone: null,
+            },
+          });
+          if (interaction.isRepliable()) {
+            await interaction.reply({
+              content: t("commands:watcher.added"),
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+          return;
+        }
       }
     } catch (err) {
       console.error("Command error:", err);
       try {
-        await interaction.reply({
-          content: t("errors.unexpected"),
-          flags: MessageFlags.Ephemeral,
-        });
+        if (interaction.isRepliable()) {
+          await interaction.reply({
+            content: t("errors.unexpected"),
+            flags: MessageFlags.Ephemeral,
+          });
+        }
       } catch (replyErr) {
         console.error("Failed to reply with error:", replyErr);
       }
@@ -630,9 +699,23 @@ async function handleConfigCommand(interaction: any): Promise<void> {
     } else {
       embed.addFields({
         name: t("commands:config.view.user"),
-        value: t("commands:config.view.user.none"),
+        value: `${t("commands:config.view.user.none")}\n${t(
+          "commands:config.view.create_hint"
+        )}`,
         inline: false,
       });
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_create_watcher_self")
+          .setLabel(t("commands:config.view.create_button"))
+          .setStyle(ButtonStyle.Primary)
+      );
+      await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
     }
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });

@@ -24,6 +24,8 @@
   "config.view.server": "📍 Servidor",
   "config.view.user": "👤 Tus ajustes",
   "config.view.user.none": "Sin configuración personal",
+  "config.view.create_hint": "Pulsa el botón para crear tu watcher (equivale a /config add-watcher user:me)",
+  "config.view.create_button": "Crear mi watcher",
   "config.view.labels.enabled": "Activado",
   "config.view.labels.self_join": "Auto-entrada",
   "config.view.labels.while_in_voice": "Mientras en voz",
