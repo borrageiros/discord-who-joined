@@ -152,11 +152,28 @@ export function createClient(): Client {
             },
           });
           if (interaction.isRepliable()) {
+            const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder()
+                .setCustomId("config_view_self")
+                .setLabel(t("commands:config.view.view.title"))
+                .setStyle(ButtonStyle.Secondary)
+            );
             await interaction.reply({
               content: t("commands:watcher.added"),
+              components: [rowView],
               flags: MessageFlags.Ephemeral,
             });
           }
+          return;
+        }
+        if (customId === "config_view_self") {
+          // reuse the same view path
+          // call handleConfigCommand with synthesized subcommand 'view'
+          (interaction as any).options = {
+            getSubcommandGroup: () => null,
+            getSubcommand: () => "view",
+          };
+          await handleConfigCommand(interaction as any);
           return;
         }
       }
@@ -280,9 +297,16 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       interaction.options.getString("timezone") ?? undefined;
     const defaultMessageTemplate =
       interaction.options.getString("message") ?? undefined;
+    const defaultTitleTemplate =
+      interaction.options.getString("title") ?? undefined;
     await prisma.guildConfig.update({
       where: { guildId },
-      data: { defaultLocale, defaultTimezone, defaultMessageTemplate },
+      data: {
+        defaultLocale,
+        defaultTimezone,
+        defaultMessageTemplate,
+        defaultTitleTemplate,
+      },
     });
     await interaction.reply({
       content: t("commands:config.saved"),
@@ -307,8 +331,15 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       where: { guildId_userId: { guildId, userId: user.id } },
     });
     if (!existing) {
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_create_watcher_self")
+          .setLabel(t("commands:config.view.create_button"))
+          .setStyle(ButtonStyle.Primary)
+      );
       await interaction.reply({
         content: t("commands:watcher.not_found"),
+        components: [row],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -323,8 +354,11 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       interaction.options.getBoolean("notify_on_move") ?? undefined;
     const notifyOnBotJoin =
       interaction.options.getBoolean("notify_on_bot_join") ?? undefined;
+    const keepInSync =
+      interaction.options.getBoolean("keep_in_sync") ?? undefined;
     const messageTemplate =
       interaction.options.getString("message") ?? undefined;
+    const titleTemplate = interaction.options.getString("title") ?? undefined;
     const localeOpt = interaction.options.getString("locale");
     const localeUpdate =
       localeOpt == null
@@ -348,13 +382,47 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         notifyWhileWatcherInVoice: notifyWhileWatcherInVoice ?? undefined,
         notifyOnMove: notifyOnMove ?? undefined,
         notifyOnBotJoin: notifyOnBotJoin ?? undefined,
+        keepInSyncAcrossGuilds: keepInSync ?? undefined,
         messageTemplate: messageTemplate ?? undefined,
+        titleTemplate: titleTemplate ?? undefined,
         locale: localeUpdate,
         timezone: timezoneUpdate,
       },
     });
+
+    const updatedWatcher = await prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId: user.id } },
+    });
+    const prevKeep = !!(existing as any).keepInSyncAcrossGuilds;
+    const targetKeep = keepInSync !== undefined ? keepInSync : prevKeep;
+    const shouldPropagate =
+      prevKeep || keepInSync === true || (prevKeep && keepInSync === false);
+    if (shouldPropagate && updatedWatcher) {
+      await prisma.watcherConfig.updateMany({
+        where: { userId: user.id, guildId: { not: guildId } },
+        data: {
+          enabled: updatedWatcher.enabled,
+          notifySelfJoin: updatedWatcher.notifySelfJoin,
+          notifyWhileWatcherInVoice: updatedWatcher.notifyWhileWatcherInVoice,
+          notifyOnMove: updatedWatcher.notifyOnMove,
+          notifyOnBotJoin: updatedWatcher.notifyOnBotJoin,
+          messageTemplate: updatedWatcher.messageTemplate,
+          locale: updatedWatcher.locale,
+          timezone: updatedWatcher.timezone,
+          keepInSyncAcrossGuilds: targetKeep,
+        },
+      });
+    }
+
+    const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId("config_view_self")
+        .setLabel(t("commands:config.view.view.title"))
+        .setStyle(ButtonStyle.Secondary)
+    );
     await interaction.reply({
       content: t("commands:watcher.updated"),
+      components: [rowView],
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -390,8 +458,11 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       interaction.options.getBoolean("notify_on_move") ?? undefined;
     const notifyOnBotJoin =
       interaction.options.getBoolean("notify_on_bot_join") ?? undefined;
+    const keepInSync =
+      interaction.options.getBoolean("keep_in_sync") ?? undefined;
     const messageTemplate =
       interaction.options.getString("message") ?? undefined;
+    const titleTemplate = interaction.options.getString("title") ?? undefined;
     const localeOpt = interaction.options.getString("locale");
     const localeVal = localeOpt === "inherit" ? null : localeOpt ?? null;
     const timezoneOpt = interaction.options.getString("timezone");
@@ -406,13 +477,22 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         notifyWhileWatcherInVoice: notifyWhileWatcherInVoice ?? false,
         notifyOnMove: notifyOnMove ?? false,
         notifyOnBotJoin: notifyOnBotJoin ?? false,
+        keepInSyncAcrossGuilds: keepInSync ?? false,
         messageTemplate: messageTemplate ?? null,
+        titleTemplate: titleTemplate ?? null,
         locale: localeVal,
         timezone: timezoneVal,
       },
     });
+    const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId("config_view_self")
+        .setLabel(t("commands:config.view.view.title"))
+        .setStyle(ButtonStyle.Secondary)
+    );
     await interaction.reply({
       content: t("commands:watcher.added"),
+      components: [rowView],
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -582,8 +662,15 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         update: {},
         create: { watcherId: watcher.id, userId: u.id },
       });
+      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_view_self")
+          .setLabel(t("commands:config.view.view.title"))
+          .setStyle(ButtonStyle.Secondary)
+      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
+        components: [rowView],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -593,8 +680,15 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       await prisma.excludedUser.deleteMany({
         where: { watcherId: watcher.id, userId: u.id },
       });
+      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_view_self")
+          .setLabel(t("commands:config.view.view.title"))
+          .setStyle(ButtonStyle.Secondary)
+      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
+        components: [rowView],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -608,8 +702,15 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         update: {},
         create: { watcherId: watcher.id, roleId: r.id },
       });
+      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_view_self")
+          .setLabel(t("commands:config.view.view.title"))
+          .setStyle(ButtonStyle.Secondary)
+      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
+        components: [rowView],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -619,8 +720,15 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       await prisma.excludedRole.deleteMany({
         where: { watcherId: watcher.id, roleId: r.id },
       });
+      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_view_self")
+          .setLabel(t("commands:config.view.view.title"))
+          .setStyle(ButtonStyle.Secondary)
+      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
+        components: [rowView],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -655,10 +763,11 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         )}:** ${resolvedLocale}\n**${t(
           "commands:config.view.labels.timezone"
         )}:** ${resolvedTimezone}\n**${t(
-          "commands:config.view.labels.message_template"
+          "commands:config.view.labels.title_template"
         )}:** ${
-          gc.defaultMessageTemplate ||
-          t("commands:config.view.values.message_default")
+          gc.defaultTitleTemplate || t("notifications:voice.title")
+        }\n**${t("commands:config.view.labels.message_template")}:** ${
+          gc.defaultMessageTemplate || t("notifications:voice.default")
         }`,
         inline: false,
       });
@@ -673,6 +782,34 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         (myWatcher as any).excludedRoles
           ?.map((er: any) => `<@&${er.roleId}>`)
           .join(", ") || t("commands:permissions.list.none");
+      const inheritedLocale = gc?.defaultLocale ?? env.DEFAULT_LOCALE;
+      const inheritedTimezone = gc?.defaultTimezone ?? env.DEFAULT_TIMEZONE;
+      const serverTemplate =
+        gc?.defaultMessageTemplate || t("notifications:voice.default");
+      const serverTitleTemplate =
+        gc?.defaultTitleTemplate || t("notifications:voice.title");
+      const localeDisplay =
+        myWatcher.locale ||
+        (!isAdminOp
+          ? `${t("commands:config.view.labels.inherit")} (${inheritedLocale})`
+          : t("commands:config.view.labels.inherit"));
+      const timezoneDisplay =
+        myWatcher.timezone ||
+        (!isAdminOp
+          ? `${t("commands:config.view.labels.inherit")} (${inheritedTimezone})`
+          : t("commands:config.view.labels.inherit"));
+      const templateDisplay =
+        myWatcher.messageTemplate ||
+        (!isAdminOp
+          ? `${t("commands:config.view.labels.inherit")} (${serverTemplate})`
+          : t("commands:config.view.labels.inherit"));
+      const titleTemplateDisplay =
+        myWatcher.titleTemplate ||
+        (!isAdminOp
+          ? `${t(
+              "commands:config.view.labels.inherit"
+            )} (${serverTitleTemplate})`
+          : t("commands:config.view.labels.inherit"));
       embed.addFields({
         name: t("commands:config.view.user"),
         value: `**${t("commands:config.view.labels.enabled")}:** ${
@@ -685,11 +822,19 @@ async function handleConfigCommand(interaction: any): Promise<void> {
           myWatcher.notifyOnMove ? "✅" : "❌"
         }\n**${t("commands:config.view.labels.on_bot_join")}:** ${
           (myWatcher as any).notifyOnBotJoin ? "✅" : "❌"
-        }\n**${t("commands:config.view.labels.locale")}:** ${
-          myWatcher.locale || t("commands:config.view.labels.inherit")
-        }\n**${t("commands:config.view.labels.timezone")}:** ${
-          myWatcher.timezone || t("commands:config.view.labels.inherit")
         }\n**${t(
+          "commands:config.view.labels.locale"
+        )}:** ${localeDisplay}\n**${t(
+          "commands:config.view.labels.timezone"
+        )}:** ${timezoneDisplay}\n**${t(
+          "commands:config.view.labels.title_template"
+        )}:** ${titleTemplateDisplay}\n**${t(
+          "commands:config.view.labels.message_template"
+        )}:** ${templateDisplay}\n**${t(
+          "commands:config.view.labels.keep_in_sync"
+        )}:** ${
+          (myWatcher as any).keepInSyncAcrossGuilds ? "✅" : "❌"
+        }\n\n__**${t("commands:config.view.exclusive_title")}**__\n**${t(
           "commands:config.view.labels.excluded_users"
         )}:** ${excludedUsersList}\n**${t(
           "commands:config.view.labels.excluded_roles"
@@ -786,7 +931,16 @@ async function handleVoiceStateUpdate(
       watcher.messageTemplate ??
       config.defaultMessageTemplate ??
       t("notifications:voice.default");
-    const template = normalizeEscapes(templateRaw);
+    const hasShowUserImage = templateRaw.includes("{showUserImage}");
+    const hasShowServerInfo = templateRaw.includes("{showServerInfo}");
+    const hasChannelLink = templateRaw.includes("{channelLink}");
+    const hasShowDate = templateRaw.includes("{showDate}");
+    const sanitizedTemplateRaw = templateRaw
+      .replace(/\{showUserImage\}/g, "")
+      .replace(/\{showServerInfo\}/g, "")
+      .replace(/\{channelLink\}/g, "")
+      .replace(/\{showDate\}/g, "");
+    const template = normalizeEscapes(sanitizedTemplateRaw);
 
     const timezone =
       watcher.timezone ?? config.defaultTimezone ?? env.DEFAULT_TIMEZONE;
@@ -812,26 +966,39 @@ async function handleVoiceStateUpdate(
       ? `https://discord.com/channels/${newState.guild.id}/${newState.channelId}`
       : undefined;
 
+    const titleRaw =
+      watcher.titleTemplate ??
+      config.defaultTitleTemplate ??
+      t("notifications:voice.title");
+    const title = normalizeEscapes(
+      titleRaw
+        .replace(/\{me\}/g, member.displayName)
+        .replace(/\{user\}/g, newState.member?.displayName ?? "Someone")
+        .replace(/\{channel\}/g, channelName)
+        .replace(/\{server\}/g, serverName)
+        .replace(/\{date\}/g, date)
+    );
+
     const notificationEmbed = new EmbedBuilder()
-      .setTitle(t("notifications:voice.title"))
+      .setTitle(title)
       .setDescription(content)
-      .setColor(0x7289da)
-      .setTimestamp();
+      .setColor(0x7289da);
+
+    if (hasShowDate) {
+      notificationEmbed.setTimestamp();
+    }
 
     const serverIcon = newState.guild.iconURL({ size: 256 }) ?? undefined;
-    if (serverIcon) {
-      notificationEmbed.setAuthor({
-        name: serverName,
-        iconURL: serverIcon,
-      });
+    if (hasShowServerInfo && serverIcon) {
+      notificationEmbed.setAuthor({ name: serverName, iconURL: serverIcon });
     }
     const actorAvatar =
       newState.member?.displayAvatarURL({ size: 128 }) ?? undefined;
-    if (actorAvatar) {
+    if (hasShowUserImage && actorAvatar) {
       notificationEmbed.setThumbnail(actorAvatar);
     }
 
-    if (voiceUrl) {
+    if (hasChannelLink && voiceUrl) {
       notificationEmbed.addFields({
         name: t("notifications:voice.join"),
         value: `[${channelName}](${voiceUrl})`,

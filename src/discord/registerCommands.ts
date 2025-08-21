@@ -55,7 +55,14 @@ export async function registerGlobalCommands(): Promise<void> {
               type: 3,
               name: "message",
               description:
-                "Default message template, available variables: {me}, {user}, {channel}, {server}, {date}",
+                "Variables: {me}{user}{channel}{server}{date}{showUserImage}{showServerInfo}{channelLink}{showDate}",
+              required: false,
+            },
+            {
+              type: 3,
+              name: "title",
+              description:
+                "Title template, available variables: {me}, {user}, {channel}, {server}, {date}",
               required: false,
             },
           ],
@@ -97,6 +104,13 @@ export async function registerGlobalCommands(): Promise<void> {
             },
             {
               type: 5,
+              name: "keep_in_sync",
+              description:
+                "Keep configuration in sync across servers (excluded users/roles are not propagated)",
+              required: false,
+            },
+            {
+              type: 5,
               name: "notify_on_bot_join",
               description: "Notify when the actor is a bot",
               required: false,
@@ -105,6 +119,12 @@ export async function registerGlobalCommands(): Promise<void> {
               type: 3,
               name: "message",
               description: "Personal message template",
+              required: false,
+            },
+            {
+              type: 3,
+              name: "title",
+              description: "Personal title template",
               required: false,
             },
             {
@@ -316,6 +336,13 @@ export async function registerGlobalCommands(): Promise<void> {
               type: 5,
               name: "notify_on_move",
               description: "Notify on channel move",
+              required: false,
+            },
+            {
+              type: 5,
+              name: "keep_in_sync",
+              description:
+                "Keep configuration in sync across servers (excluded users/roles are not propagated)",
               required: false,
             },
             {

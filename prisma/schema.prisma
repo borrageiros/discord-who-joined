@@ -16,6 +16,7 @@ model GuildConfig {
   defaultLocale          String?
   defaultTimezone        String?
   defaultMessageTemplate String?
+  defaultTitleTemplate   String?
   allowedRoles           AllowedRole[]
   allowedUsers           AllowedUser[]
   watchers               WatcherConfig[]
@@ -33,11 +34,13 @@ model WatcherConfig {
   notifyWhileWatcherInVoice   Boolean  @default(false)
   notifyOnMove                Boolean  @default(false)
   notifyOnBotJoin             Boolean  @default(false)
+  keepInSyncAcrossGuilds      Boolean  @default(false)
   channelFilterMode           ChannelFilterMode @default(NONE)
   channelFilters              ChannelFilter[]
   excludedUsers               ExcludedUser[]
   excludedRoles               ExcludedRole[]
   messageTemplate             String?
+  titleTemplate               String?
   locale                      String?
   timezone                    String?
   createdAt                   DateTime  @default(now())

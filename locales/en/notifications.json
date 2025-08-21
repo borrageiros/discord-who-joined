@@ -1,5 +1,5 @@
 {
   "voice.title": "📢 New Voice Connection!",
-  "voice.default": "Hello {me},\n{user} is now connected",
+  "voice.default": "Hello {me},\n{user} is now connected {showUserImage} {showServerInfo} {channelLink} {showDate}",
   "voice.join": "Join voice channel"
 }
