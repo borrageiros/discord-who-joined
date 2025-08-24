@@ -301,6 +301,177 @@ export async function registerGlobalCommands(): Promise<void> {
                 },
               ],
             },
+            {
+              type: 1,
+              name: "add-channel",
+              description: "Exclude a voice channel",
+              options: [
+                {
+                  type: 7,
+                  name: "channel",
+                  description: "Channel to exclude",
+                  required: true,
+                  channel_types: [2, 13],
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-channel",
+              description: "Remove an excluded channel",
+              options: [
+                {
+                  type: 7,
+                  name: "channel",
+                  description: "Channel to remove",
+                  required: true,
+                  channel_types: [2, 13],
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 2,
+          name: "allowlist",
+          description: "Only notify for these users and roles",
+          options: [
+            {
+              type: 1,
+              name: "add-user",
+              description: "Allow a specific user",
+              options: [
+                {
+                  type: 6,
+                  name: "user",
+                  description: "User to allow",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-user",
+              description: "Remove an allowed user",
+              options: [
+                {
+                  type: 6,
+                  name: "user",
+                  description: "User to remove",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "add-role",
+              description: "Allow a role",
+              options: [
+                {
+                  type: 8,
+                  name: "role",
+                  description: "Role to allow",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-role",
+              description: "Remove an allowed role",
+              options: [
+                {
+                  type: 8,
+                  name: "role",
+                  description: "Role to remove",
+                  required: true,
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "add-channel",
+              description: "Allow a voice channel",
+              options: [
+                {
+                  type: 7,
+                  name: "channel",
+                  description: "Channel to allow",
+                  required: true,
+                  channel_types: [2, 13],
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
+            {
+              type: 1,
+              name: "remove-channel",
+              description: "Remove an allowed channel",
+              options: [
+                {
+                  type: 7,
+                  name: "channel",
+                  description: "Channel to remove",
+                  required: true,
+                  channel_types: [2, 13],
+                },
+                {
+                  type: 6,
+                  name: "watcher",
+                  description:
+                    "Watcher to edit (admin only; default: yourself)",
+                  required: false,
+                },
+              ],
+            },
           ],
         },
         {

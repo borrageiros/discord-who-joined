@@ -39,6 +39,10 @@ model WatcherConfig {
   channelFilters              ChannelFilter[]
   excludedUsers               ExcludedUser[]
   excludedRoles               ExcludedRole[]
+  excludedChannels            ExcludedChannel[]
+  includedUsers               IncludedUser[]
+  includedRoles               IncludedRole[]
+  includedChannels            IncludedChannel[]
   messageTemplate             String?
   titleTemplate               String?
   locale                      String?
@@ -101,4 +105,40 @@ model ExcludedRole {
   roleId    String
 
   @@unique([watcherId, roleId], name: "watcherId_roleId_excluded")
+}
+
+model IncludedUser {
+  id        String        @id @default(cuid())
+  watcher   WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId String
+  userId    String
+
+  @@unique([watcherId, userId], name: "watcherId_userId_included")
+}
+
+model IncludedRole {
+  id        String        @id @default(cuid())
+  watcher   WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId String
+  roleId    String
+
+  @@unique([watcherId, roleId], name: "watcherId_roleId_included")
+}
+
+model ExcludedChannel {
+  id         String        @id @default(cuid())
+  watcher    WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId  String
+  channelId  String
+
+  @@unique([watcherId, channelId], name: "watcherId_channelId_excluded")
+}
+
+model IncludedChannel {
+  id         String        @id @default(cuid())
+  watcher    WatcherConfig @relation(fields: [watcherId], references: [id], onDelete: Cascade)
+  watcherId  String
+  channelId  String
+
+  @@unique([watcherId, channelId], name: "watcherId_channelId_included")
 }

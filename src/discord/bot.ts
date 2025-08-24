@@ -152,15 +152,9 @@ export function createClient(): Client {
             },
           });
           if (interaction.isRepliable()) {
-            const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setCustomId("config_view_self")
-                .setLabel(t("commands:config.view.view.title"))
-                .setStyle(ButtonStyle.Secondary)
-            );
             await interaction.reply({
               content: t("commands:watcher.added"),
-              components: [rowView],
+              components: [buildViewConfigRow()],
               flags: MessageFlags.Ephemeral,
             });
           }
@@ -414,15 +408,9 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       });
     }
 
-    const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId("config_view_self")
-        .setLabel(t("commands:config.view.view.title"))
-        .setStyle(ButtonStyle.Secondary)
-    );
     await interaction.reply({
       content: t("commands:watcher.updated"),
-      components: [rowView],
+      components: [buildViewConfigRow()],
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -484,15 +472,9 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         timezone: timezoneVal,
       },
     });
-    const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId("config_view_self")
-        .setLabel(t("commands:config.view.view.title"))
-        .setStyle(ButtonStyle.Secondary)
-    );
     await interaction.reply({
       content: t("commands:watcher.added"),
-      components: [rowView],
+      components: [buildViewConfigRow()],
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -662,15 +644,9 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         update: {},
         create: { watcherId: watcher.id, userId: u.id },
       });
-      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("config_view_self")
-          .setLabel(t("commands:config.view.view.title"))
-          .setStyle(ButtonStyle.Secondary)
-      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
-        components: [rowView],
+        components: [buildViewConfigRow()],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -680,15 +656,9 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       await prisma.excludedUser.deleteMany({
         where: { watcherId: watcher.id, userId: u.id },
       });
-      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("config_view_self")
-          .setLabel(t("commands:config.view.view.title"))
-          .setStyle(ButtonStyle.Secondary)
-      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
-        components: [rowView],
+        components: [buildViewConfigRow()],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -702,15 +672,9 @@ async function handleConfigCommand(interaction: any): Promise<void> {
         update: {},
         create: { watcherId: watcher.id, roleId: r.id },
       });
-      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("config_view_self")
-          .setLabel(t("commands:config.view.view.title"))
-          .setStyle(ButtonStyle.Secondary)
-      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
-        components: [rowView],
+        components: [buildViewConfigRow()],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -720,15 +684,159 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       await prisma.excludedRole.deleteMany({
         where: { watcherId: watcher.id, roleId: r.id },
       });
-      const rowView = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("config_view_self")
-          .setLabel(t("commands:config.view.view.title"))
-          .setStyle(ButtonStyle.Secondary)
-      );
       await interaction.reply({
         content: t("commands:watcher.updated"),
-        components: [rowView],
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "add-channel") {
+      const ch = interaction.options.getChannel("channel", true);
+      await prisma.excludedChannel.upsert({
+        where: {
+          watcherId_channelId_excluded: {
+            watcherId: watcher.id,
+            channelId: ch.id,
+          },
+        },
+        update: {},
+        create: { watcherId: watcher.id, channelId: ch.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-channel") {
+      const ch = interaction.options.getChannel("channel", true);
+      await prisma.excludedChannel.deleteMany({
+        where: { watcherId: watcher.id, channelId: ch.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+  }
+
+  if (group === "allowlist") {
+    const isAdminUser = await userHasAdminPermission(interaction);
+    const targetUser =
+      interaction.options.getUser("watcher") ?? interaction.user;
+    if (!isAdminUser && targetUser.id !== interaction.user.id) {
+      await interaction.reply({
+        content: t("errors.missing_permissions"),
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const user = targetUser;
+    const watcher = await prisma.watcherConfig.findUnique({
+      where: { guildId_userId: { guildId, userId: user.id } },
+    });
+    if (!watcher) {
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("config_create_watcher_self")
+          .setLabel(t("commands:config.view.create_button"))
+          .setStyle(ButtonStyle.Primary)
+      );
+      await interaction.reply({
+        content: t("commands:watcher.not_found"),
+        components: [row],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (sub === "add-user") {
+      const u = interaction.options.getUser("user", true);
+      await prisma.includedUser.upsert({
+        where: {
+          watcherId_userId_included: { watcherId: watcher.id, userId: u.id },
+        },
+        update: {},
+        create: { watcherId: watcher.id, userId: u.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-user") {
+      const u = interaction.options.getUser("user", true);
+      await prisma.includedUser.deleteMany({
+        where: { watcherId: watcher.id, userId: u.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "add-role") {
+      const r = interaction.options.getRole("role", true);
+      await prisma.includedRole.upsert({
+        where: {
+          watcherId_roleId_included: { watcherId: watcher.id, roleId: r.id },
+        },
+        update: {},
+        create: { watcherId: watcher.id, roleId: r.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-role") {
+      const r = interaction.options.getRole("role", true);
+      await prisma.includedRole.deleteMany({
+        where: { watcherId: watcher.id, roleId: r.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "add-channel") {
+      const ch = interaction.options.getChannel("channel", true);
+      await prisma.includedChannel.upsert({
+        where: {
+          watcherId_channelId_included: {
+            watcherId: watcher.id,
+            channelId: ch.id,
+          },
+        },
+        update: {},
+        create: { watcherId: watcher.id, channelId: ch.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (sub === "remove-channel") {
+      const ch = interaction.options.getChannel("channel", true);
+      await prisma.includedChannel.deleteMany({
+        where: { watcherId: watcher.id, channelId: ch.id },
+      });
+      await interaction.reply({
+        content: t("commands:watcher.updated"),
+        components: [buildViewConfigRow()],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -739,7 +847,16 @@ async function handleConfigCommand(interaction: any): Promise<void> {
     const gc = await prisma.guildConfig.findUnique({
       where: { guildId },
       include: {
-        watchers: { include: { excludedUsers: true, excludedRoles: true } },
+        watchers: {
+          include: {
+            excludedUsers: true,
+            excludedRoles: true,
+            excludedChannels: true,
+            includedUsers: true,
+            includedRoles: true,
+            includedChannels: true,
+          },
+        },
       },
     });
     const isAdminOp = await userHasAdminPermission(interaction);
@@ -757,7 +874,7 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       const resolvedLocale = gc.defaultLocale ?? env.DEFAULT_LOCALE;
       const resolvedTimezone = gc.defaultTimezone ?? env.DEFAULT_TIMEZONE;
       embed.addFields({
-        name: t("commands:config.view.server"),
+        name: `__**${t("commands:config.view.server")}**__`,
         value: `**${t(
           "commands:config.view.labels.locale"
         )}:** ${resolvedLocale}\n**${t(
@@ -781,6 +898,22 @@ async function handleConfigCommand(interaction: any): Promise<void> {
       const excludedRolesList =
         (myWatcher as any).excludedRoles
           ?.map((er: any) => `<@&${er.roleId}>`)
+          .join(", ") || t("commands:permissions.list.none");
+      const excludedChannelsList =
+        (myWatcher as any).excludedChannels
+          ?.map((ec: any) => `<#${ec.channelId}>`)
+          .join(", ") || t("commands:permissions.list.none");
+      const allowedUsersList =
+        (myWatcher as any).includedUsers
+          ?.map((iu: any) => `<@${iu.userId}>`)
+          .join(", ") || t("commands:permissions.list.none");
+      const allowedRolesList =
+        (myWatcher as any).includedRoles
+          ?.map((ir: any) => `<@&${ir.roleId}>`)
+          .join(", ") || t("commands:permissions.list.none");
+      const allowedChannelsList =
+        (myWatcher as any).includedChannels
+          ?.map((ic: any) => `<#${ic.channelId}>`)
           .join(", ") || t("commands:permissions.list.none");
       const inheritedLocale = gc?.defaultLocale ?? env.DEFAULT_LOCALE;
       const inheritedTimezone = gc?.defaultTimezone ?? env.DEFAULT_TIMEZONE;
@@ -811,7 +944,7 @@ async function handleConfigCommand(interaction: any): Promise<void> {
             )} (${serverTitleTemplate})`
           : t("commands:config.view.labels.inherit"));
       embed.addFields({
-        name: t("commands:config.view.user"),
+        name: `__**${t("commands:config.view.user")}**__`,
         value: `**${t("commands:config.view.labels.enabled")}:** ${
           myWatcher.enabled ? "✅" : "❌"
         }\n**${t("commands:config.view.labels.self_join")}:** ${
@@ -834,11 +967,23 @@ async function handleConfigCommand(interaction: any): Promise<void> {
           "commands:config.view.labels.keep_in_sync"
         )}:** ${
           (myWatcher as any).keepInSyncAcrossGuilds ? "✅" : "❌"
-        }\n\n__**${t("commands:config.view.exclusive_title")}**__\n**${t(
+        }\n\n__**${t("commands:config.view.exclusive_title")}**__\n\n__**${t(
+          "commands:config.view.excluded_title"
+        )}**__\n**${t(
           "commands:config.view.labels.excluded_users"
         )}:** ${excludedUsersList}\n**${t(
           "commands:config.view.labels.excluded_roles"
-        )}:** ${excludedRolesList}`,
+        )}:** ${excludedRolesList}\n**${t(
+          "commands:config.view.labels.excluded_channels"
+        )}:** ${excludedChannelsList}\n\n__**${t(
+          "commands:config.view.allowlist_title"
+        )}**__\n**${t(
+          "commands:config.view.labels.allowed_users"
+        )}:** ${allowedUsersList}\n**${t(
+          "commands:config.view.labels.allowed_roles"
+        )}:** ${allowedRolesList}\n**${t(
+          "commands:config.view.labels.allowed_channels"
+        )}:** ${allowedChannelsList}`,
         inline: false,
       });
     } else {
@@ -889,7 +1034,14 @@ async function handleVoiceStateUpdate(
   const config = await prisma.guildConfig.findUnique({
     where: { guildId },
     include: {
-      watchers: { include: { excludedUsers: true, excludedRoles: true } },
+      watchers: {
+        include: {
+          excludedUsers: true,
+          excludedRoles: true,
+          includedUsers: true,
+          includedRoles: true,
+        },
+      },
     },
   });
   if (!config) return;
@@ -924,6 +1076,17 @@ async function handleVoiceStateUpdate(
       (watcher.excludedRoles ?? []).some((er: any) => actorRoles.has(er.roleId))
     )
       continue;
+
+    const allowUsers = (watcher as any).includedUsers ?? [];
+    const allowRoles = (watcher as any).includedRoles ?? [];
+    if (allowUsers.length > 0 || allowRoles.length > 0) {
+      const userAllowed =
+        actorUserId && allowUsers.some((iu: any) => iu.userId === actorUserId);
+      const roleAllowed = allowRoles.some((ir: any) =>
+        actorRoles.has(ir.roleId)
+      );
+      if (!userAllowed && !roleAllowed) continue;
+    }
 
     const locale = watcher.locale ?? config.defaultLocale ?? env.DEFAULT_LOCALE;
     i18next.changeLanguage(locale);
@@ -1008,4 +1171,13 @@ async function handleVoiceStateUpdate(
 
     await member.send({ embeds: [notificationEmbed] }).catch(() => undefined);
   }
+}
+
+function buildViewConfigRow(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("config_view_self")
+      .setLabel(t("commands:config.view.view.title"))
+      .setStyle(ButtonStyle.Secondary)
+  );
 }
